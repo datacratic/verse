@@ -7,7 +7,6 @@
    - fallback gto a generic error handler
    - reply.send, reply.fail, reply(Buffer, 'binary')
         - all that good stuff
-
         - reply.render(someTemplate)
         - map.serving('/some file :D');
 */
@@ -15,6 +14,9 @@
 var sys = require('sys'),
     url = require('url'),
     querystring = require('querystring');
+
+var cookie = require('./vendor/cookie');
+    cookie.secret = 'somesecret';
 
 var static = require('node-static'),
     formidable = require('formidable');
@@ -60,6 +62,11 @@ Reply.prototype._send = function (status, body, headers) {
     headers = mixin(defaultHeaders, headers, {'content-length': body.length});
     this.response.writeHead(status, headers);
     this.response.end(body+ '\n');
+};
+
+Reply.prototype.cookie = function (key, value) {
+    var inTenYears = new(Date)().getTime() + 315360000000;
+    this.response.setCookie(key, value, {host: this.host, expires: inItenYears, path: '/'});
 };
 
 Reply.prototype.json = function (obj) {
@@ -115,6 +122,7 @@ Router.prototype.route = function (request, response) {
     var that = this;
    // parse request
     var params = querystring.parse(url.parse(request.url).query);
+    headers.url = request.url;
 
     var route = (function (request) {
         for (var i=0; i < that.routes.length; i++) {
