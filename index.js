@@ -1,16 +1,3 @@
-/* TODO:
-   - route to functions
-   - functions can return json
-   - functions can parse json
-   - functions can stream
-   - function can POST GET ETC
-   - fallback gto a generic error handler
-   - reply.send, reply.fail, reply(Buffer, 'binary')
-        - all that good stuff
-        - reply.render(someTemplate)
-        - map.serving('/some file :D');
-*/
-
 var sys = require('sys'),
     url = require('url'),
     querystring = require('querystring');
@@ -21,21 +8,18 @@ var cookie = require('./vendor/cookie');
 var static = require('node-static'),
     formidable = require('formidable');
 
-var file = new(static.Server)('./frontend/static', { cache: 0 });
+var file = new(static.Server)('./static', { cache: 0 });
 
 // ####################################################
 
-var normalizePath =  function () {
+var normalizePath =  function (path) {
     // URL are usually fucked
     // could include '^/' or '$/'
     // could be a string or a regex
+    path = path.replace(/(^\/|\/$)/g, ''); //remove start and end slashe
+    path = path.replace(/\/\/+/g, '/');    //remove double slashes
 
-    var paths = Array.prototype.slice.apply(arguments);
-    paths = paths.map(function (path) {
-        return path.replace(/(^\/|\/$)/g, ''); //remove any slashes
-    });
-
-    return paths.join('/');
+    return path;
 };
 
 function mixin() {
@@ -56,21 +40,21 @@ var Reply = function (response) {
     this.response = response;
 };
 
-var defaultHeaders = {'content-type': 'text/plain'};
+var defaultHeaders = {'Content-Type': 'text/plain'};
 
 Reply.prototype._send = function (status, body, headers) {
-    headers = mixin(defaultHeaders, headers, {'content-length': body.length});
+    headers = mixin(defaultHeaders, headers, {'Content-Length': body.length});
     this.response.writeHead(status, headers);
     this.response.end(body+ '\n');
 };
 
 Reply.prototype.cookie = function (key, value) {
     var inTenYears = new(Date)().getTime() + 315360000000;
-    this.response.setCookie(key, value, {host: this.host, expires: inItenYears, path: '/'});
+    this.response.setCookie(key, value, {host: this.host, expires: inTenYears, path: '/'});
 };
 
 Reply.prototype.json = function (obj) {
-    this._send(200, JSON.stringify(obj), {'content-type': 'text/json'});
+    this._send(200, JSON.stringify(obj), {'Content-Type': 'text/json'});
 };
 
 Reply.prototype.send = function (txt) {
@@ -78,7 +62,7 @@ Reply.prototype.send = function (txt) {
 };
 
 Reply.prototype.html = function (html) {
-    this._send(200, html, {'content-type': 'text/html'});
+    this._send(200, html, {'Content-Type': 'text/html'});
 };
 
 Reply.prototype.fail = function (problem) {
@@ -93,7 +77,7 @@ Reply.prototype.serve = function (filePath) {
 
 var url = require('url');
 var querystring = require('querystring');
-var Router = function () {
+var Router = function (baseDir) {
     this.routes = [];
     this.notFoundHandler = function (request, response) {
         var body = 'not found';
@@ -122,7 +106,9 @@ Router.prototype.route = function (request, response) {
     var that = this;
    // parse request
     var params = querystring.parse(url.parse(request.url).query);
-    headers.url = request.url;
+    var headers = request.headers;
+    headers.request_url = request.url;
+    headers.remote_ip   = request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || request.socket.remoteAddress;
 
     var route = (function (request) {
         for (var i=0; i < that.routes.length; i++) {
@@ -144,7 +130,7 @@ Router.prototype.route = function (request, response) {
     if (request.method === 'POST') {
         var form = new(formidable.IncomingForm)();
         form.keepExtensions = true;
-        form.on('error', function () { console.log('ERROR:'); console.log(arguments) });
+        form.on('error', function () { console.log('FORM ERROR:'); console.log(arguments) });
         form.parse(request, function(err, fields, files) {
             if (err) throw err;
             params = mixin(params, fields, files);
@@ -152,10 +138,10 @@ Router.prototype.route = function (request, response) {
         });
     } else {
         try {
-            require('sys').debug('routing');
-            route.handler.apply(this, [reply, params, request.headers]);
+            route.handler.apply(this, [reply, params, headers, request._parseCookies()]);
         } catch (e) {
-            console.log('EXCEPTION!: ' + e);
+            console.log('ACTION EXCEPTION!: ' + e);
+            console.log(e.stack);
             that.exceptionHandler(request, response, e);
         }
     }
@@ -166,7 +152,7 @@ var Route = function (path) {
 }
 
 Route.prototype.match = function (request) {
-    var path = url.parse(request.url).pathname;
+    var path = normalizePath(url.parse(request.url).pathname);
     return this.path.test(path);
 }
 

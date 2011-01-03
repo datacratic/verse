@@ -1,8 +1,8 @@
 {
-   "name": "router",
+   "name": "verse",
    "version": "0.1.0",
    "main": "index",
-   "description": "another router fucking",
+   "description": "Simple http router",
    "author": "Braithwaite Patrick Sean <sean@recoset.com>",
    "license": {
        "type": "Apachev2",
