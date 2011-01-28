@@ -24,7 +24,8 @@ var normalizePath =  function (path) {
 
 function mixin() {
     var args = Array.prototype.slice.apply(arguments);
-    var target = args.pop();
+    var target = {};
+    args = args.filter(function (o) { return typeof(o) == 'object' } );
     args.forEach(function (other) {
         Object.keys(other).forEach(function (key) {
             target[key] = other[key];
@@ -37,18 +38,19 @@ function mixin() {
 // ####################################################
 
 var Reply = function (response) {
-    this.headers = {'Content-Type': 'text/plain'};
     this.response = response;
 };
 
+var defaultHeaders = {'Content-Type': 'text/plain'};
+
 Reply.prototype._send = function (status, body, headers) {
-    var sendHeaders = mixin(this.headers, headers, {'Content-Length': body.length});
+    headers = mixin(this.headers, headers, {'Content-Length': body.length});
     this.response.writeHead(status, headers);
     this.response.end(body+ '\n');
 };
 
 Reply.prototype.addHeaders = function (headers) {
-    this.headers = mixin(this.headers, headers||{});
+    this.headers = headers;
 };
 
 Reply.prototype.cookie = function (key, value) {
@@ -56,24 +58,25 @@ Reply.prototype.cookie = function (key, value) {
     this.response.setCookie(key, value, {host: this.host, expires: inTenYears, path: '/'});
 };
 
-Reply.prototype.json = function (obj, headers) {
-    this._send(200, JSON.stringify(obj), mixin({'Content-Type': 'text/json'}, headers||{}));
+Reply.prototype.json = function (obj) {
+    this._send(200, JSON.stringify(obj), {'Content-Type': 'text/json'});
 };
 
-Reply.prototype.send = function (txt, headers) {
-    this._send(200, txt, mixin({'Content-Type': 'text/plain'}, headers||{}));
+Reply.prototype.send = function (txt) {
+    this._send(200, txt, {});
 };
 
-Reply.prototype.html = function (html, headers) {
-    this._send(200, html, mixin({'Content-Type': 'text/html'},  headers||{}));
+Reply.prototype.html = function (html) {
+    this._send(200, html, {'Content-Type': 'text/html'});
 };
 
-Reply.prototype.fail = function (problem, headers) {
-    this._send(500, problem, mixin({'Content-Type': 'text/html'},  headers));
+Reply.prototype.fail = function (problem) {
+    this._send(500, problem, {});
 };
 
 Reply.prototype.serve = function (filePath, headers) {
-    file.serveFile(filePath, 200, {}, {'method': 'GET', headers: headers || {}}, this.response);
+    var _headers = mixin(this.headers, headers);
+    file.serveFile(filePath, 200, _headers, {'method': 'GET', headers: {}}, this.response);
 };
 
 // ####################################################
