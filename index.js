@@ -61,7 +61,7 @@ Reply.prototype.json = function (obj, headers) {
 };
 
 Reply.prototype.send = function (txt, headers) {
-    this._send(200, txt, mixin({'Content-Type': 'text/json'}, headers||{}));
+    this._send(200, txt, mixin({'Content-Type': 'text/plain'}, headers||{}));
 };
 
 Reply.prototype.html = function (html, headers) {
