@@ -1,6 +1,6 @@
 {
    "name": "verse",
-   "version": "0.1.0",
+   "version": "0.1.1",
    "main": "index",
    "description": "Simple http router",
    "author": "Braithwaite Patrick Sean <sean@recoset.com>",

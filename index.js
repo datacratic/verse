@@ -37,15 +37,18 @@ function mixin() {
 // ####################################################
 
 var Reply = function (response) {
+    this.headers = {'Content-Type': 'text/plain'};
     this.response = response;
 };
 
-var defaultHeaders = {'Content-Type': 'text/plain'};
-
 Reply.prototype._send = function (status, body, headers) {
-    headers = mixin(defaultHeaders, headers, {'Content-Length': body.length});
+    var sendHeaders = mixin(this.headers, headers, {'Content-Length': body.length});
     this.response.writeHead(status, headers);
     this.response.end(body+ '\n');
+};
+
+Reply.prototype.addHeaders = function (headers) {
+    this.headers = mixin(this.headers, headers||{});
 };
 
 Reply.prototype.cookie = function (key, value) {
@@ -53,24 +56,24 @@ Reply.prototype.cookie = function (key, value) {
     this.response.setCookie(key, value, {host: this.host, expires: inTenYears, path: '/'});
 };
 
-Reply.prototype.json = function (obj) {
-    this._send(200, JSON.stringify(obj), {'Content-Type': 'text/json'});
+Reply.prototype.json = function (obj, headers) {
+    this._send(200, JSON.stringify(obj), mixin({'Content-Type': 'text/json'}, headers||{}));
 };
 
-Reply.prototype.send = function (txt) {
-    this._send(200, txt, {});
+Reply.prototype.send = function (txt, headers) {
+    this._send(200, txt, mixin({'Content-Type': 'text/json'}, headers||{}));
 };
 
-Reply.prototype.html = function (html) {
-    this._send(200, html, {'Content-Type': 'text/html'});
+Reply.prototype.html = function (html, headers) {
+    this._send(200, html, mixin({'Content-Type': 'text/html'},  headers||{}));
 };
 
-Reply.prototype.fail = function (problem) {
-    this._send(500, problem, {});
+Reply.prototype.fail = function (problem, headers) {
+    this._send(500, problem, mixin({'Content-Type': 'text/html'},  headers));
 };
 
-Reply.prototype.serve = function (filePath) {
-    file.serveFile(filePath, 200, {}, {'method': 'GET', headers: {}}, this.response);
+Reply.prototype.serve = function (filePath, headers) {
+    file.serveFile(filePath, 200, {}, {'method': 'GET', headers: headers || {}}, this.response);
 };
 
 // ####################################################
