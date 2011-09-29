@@ -144,3 +144,35 @@ h.test(router, pixel, function (response) {
     a.equal(response.headers['Content-Type'], 'image/gif');
     a.equal(response.headers['Content-Length'], '43');
 });
+
+// Exceptions  ###############################
+var m = require('./../lib/middleware');
+
+var problem = function (reply, params) {
+    throw new(Error)("Catastrophic Error");
+};
+
+var willFail = new(v.Action)(problem);
+var willSave = new(v.Action)(m.Exception, problem);
+
+
+router.map(/willFail/).bind(willFail);
+router.map(/willSave/).bind(willSave);
+
+
+var fail= new(h.FakeRequest)('/willFail', '', {});
+a.throws(function () {
+    h.test(router, fail, function (response) {
+        // shouldn't run
+        a.equal(response.status, 200);
+    });
+});
+
+var save = new(h.FakeRequest)('/willSave', '', {});
+a.doesNotThrow(function () {
+    h.test(router, save, function (response) {
+        // should run
+        a.equal(response.status, 500);
+        a.ok(/Catastrophic Error/.test(response.body));
+    });
+});

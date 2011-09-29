@@ -173,14 +173,7 @@ Router.prototype.route = function (request, response) {
             route.handler(reply, params, params);
         });
     } else {
-        try {
-            route.handler.call.apply(this, [reply, params]);
-        } catch (e) {
-            // XXX: This sucks, could be middleware
-            console.log('ACTION EXCEPTION!: ' + e);
-            console.log(e.stack);
-            that.exceptionHandler(request, response, e);
-        }
+        route.handler.call.apply(this, [reply, params]);
     }
 };
 
