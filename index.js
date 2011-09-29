@@ -3,7 +3,9 @@ var sys = require('sys'),
     querystring = require('querystring');
 
 var static = require('node-static'),
-    formidable = require('formidable');
+    formidable = require('formidable'),
+    cookies = require('./lib/cookies');
+
 
 var file = new(static.Server)('./static', { cache: 0 });
 
@@ -42,7 +44,6 @@ var Reply = function (response, stack) {
     this.headers = {};
 };
 
-
 Reply.prototype._send = function (status, body, headers) {
     headers = mixin(this.headers, headers, {'Content-Length': body.length});
 
@@ -68,56 +69,12 @@ Reply.prototype.pass = function (reply, params) {
     }
 };
 
-// Cookies
-// Taken from express.js
-var parseCookie = function (str) {
-  var obj = {}
-    , pairs = str.split(/[;,] */);
-  for (var i = 0, len = pairs.length; i < len; ++i) {
-    var pair = pairs[i]
-      , eqlIndex = pair.indexOf('=')
-      , key = pair.substr(0, eqlIndex).trim().toLowerCase()
-      , val = pair.substr(++eqlIndex, pair.length).trim();
-
-    // quoted values
-    if ('"' == val[0]) val = val.slice(1, -1);
-
-    // only assign once
-    if (undefined == obj[key]) {
-      val = val.replace(/\+/g, ' ');
-      try {
-        obj[key] = decodeURIComponent(val);
-      } catch (err) {
-        if (err instanceof URIError) {
-          obj[key] = val;
-        } else {
-          throw err;
-        }
-      }
-    }
-  }
-  return obj;
-};
-
-// Taken from express.js
-var serializeCookie = function(name, val, obj){
-  var pairs = [name + '=' + encodeURIComponent(val)]
-    , obj = obj || {};
-
-  if (obj.domain) pairs.push('domain=' + obj.domain);
-  if (obj.path) pairs.push('path=' + obj.path);
-  if (obj.expires) pairs.push('expires=' + obj.expires.toUTCString());
-  if (obj.httpOnly) pairs.push('httpOnly');
-  if (obj.secure) pairs.push('secure');
-
-  return pairs.join('; ');
-};
 
 // This only works once
 
 Reply.prototype.cookie = function (key, value, options) {
     var inTenYears = new Date(new(Date)().getTime() + 315360000000);
-    var cookie = serializeCookie(key, value, {host: this.host, expires: inTenYears, path: '/'});
+    var cookie = cookies.serializeCookie(key, value, {host: this.host, expires: inTenYears, path: '/'});
 
     if (this.headers['Set-Cookie']) throw new(Error)('you can only cookie once, for now');
 
@@ -186,7 +143,7 @@ Router.prototype.route = function (request, response) {
     params.remote_ip   = request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || request.socket.remoteAddress;
 
     // Cookies
-    params.cookies = parseCookie(request.headers.cookie);
+    params.cookies = cookies.parseCookie(request.headers.cookie);
 
     var route = (function (request) {
         for (var i=0; i < that.routes.length; i++) {
@@ -217,7 +174,7 @@ Router.prototype.route = function (request, response) {
         });
     } else {
         try {
-            route.handler.call.apply(this, [reply, params, request._parseCookies()]);
+            route.handler.call.apply(this, [reply, params]);
         } catch (e) {
             // XXX: This sucks, could be middleware
             console.log('ACTION EXCEPTION!: ' + e);
