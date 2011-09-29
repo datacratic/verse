@@ -52,6 +52,7 @@ h.test(router, index, function (response) {
     a.doesNotThrow(function () {
         json = JSON.parse(response.body);
     });
+
     a.equal(json.foo, 'bar');
 });
 
@@ -155,10 +156,9 @@ var problem = function (reply, params) {
 var willFail = new(v.Action)(problem);
 var willSave = new(v.Action)(m.Exception, problem);
 
-
 router.map(/willFail/).bind(willFail);
-router.map(/willSave/).bind(willSave);
 
+router.map(/willSave/).bind(willSave);
 
 var fail= new(h.FakeRequest)('/willFail', '', {});
 a.throws(function () {

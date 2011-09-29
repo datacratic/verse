@@ -1,11 +1,10 @@
 var sys = require('sys'),
+    http = require('http'),
     url = require('url'),
     querystring = require('querystring');
 
 var static = require('node-static'),
-    formidable = require('formidable'),
     cookies = require('./lib/cookies');
-
 
 var file = new(static.Server)('./static', { cache: 0 });
 
@@ -38,21 +37,19 @@ function mixin () {
 
 // ####################################################
 
-var Reply = function (response, stack) {
-    this.response = response;
+var Reply = function (request, stack) {
+    http.ServerResponse.apply(this, [request]);
     this.stack = stack;
     this.headers = {};
 };
 
-Reply.prototype._send = function (status, body, headers) {
+Reply.prototype.__proto__ = http.ServerResponse.prototype;
+
+Reply.prototype.reply = function (status, body, headers) {
+    if (!body || body.length == 0) throw new(Error)('trying to write empty body');
     headers = mixin(this.headers, headers, {'Content-Length': body.length});
 
-    this.response.writeHead(status, headers);
-    this.response.end(body);
-};
-
-Reply.prototype.writeHead = function (status, headers) {
-    this.response.writeHead(status, headers);
+    this.end(body);
 };
 
 Reply.prototype.addHeaders = function (headers) {
@@ -76,36 +73,45 @@ Reply.prototype.cookie = function (key, value, options) {
     var inTenYears = new Date(new(Date)().getTime() + 315360000000);
     var cookie = cookies.serializeCookie(key, value, {host: this.host, expires: inTenYears, path: '/'});
 
-    if (this.headers['Set-Cookie']) throw new(Error)('you can only cookie once, for now');
+    if (this.getHeader('Set-Cookie')) throw new(Error)('you can only cookie once, for now');
 
-    this.headers['Set-Cookie'] = cookie;
+    this.setHeader('Set-Cookie', cookie);
 };
 
 Reply.prototype.json = function (obj) {
-    this._send(200, JSON.stringify(obj), {'Content-Type': 'text/json'});
+    this.reply(200, JSON.stringify(obj), {'Content-Type': 'text/json'});
 };
 
 Reply.prototype.send = function (txt) {
-    this._send(200, txt, {});
+    this.reply(200, txt, {});
 };
 
 Reply.prototype.html = function (html) {
-    this._send(200, html, {'Content-Type': 'text/html'});
+    this.reply(200, html, {'Content-Type': 'text/html'});
 };
 
 Reply.prototype.fail = function (problem) {
-    this._send(500, problem, {});
+    this.reply(500, problem, {});
 };
 
 Reply.prototype.serve = function (filePath, headers) {
     var _headers = mixin(this.headers, headers);
-    file.serveFile(filePath, 200, _headers, {'method': 'GET', headers: {}}, this.response);
+    file.serveFile(filePath, 200, _headers, {'method': 'GET', headers: {}}, this);
 };
+
+var Params = function (request) {
+    http.ClientRequest.apply(this, [{}]);
+    this.get = querystring.parse(url.parse(request.url).query);
+
+    this.cookies = cookies.parseCookie(request.headers.cookie);
+};
+
+Params.prototype.__proto__ = http.ClientRequest.prototype;
 
 // ####################################################
 
 var url = require('url');
-var querystring = require('querystring');
+
 var Router = function (baseDir) {
     this.routes = [];
     this.notFoundHandler = function (request, response) {
@@ -127,24 +133,15 @@ Router.prototype.map = function (path) {
     return route;
 };
 
+// XXX get rid of this
 Router.prototype.notFound = function (notFoundHandler) {
     this.notFoundHandler = notFoundHandler;
 };
 
-// split this up into middleware
 Router.prototype.route = function (request, response) {
     var that = this;
-    var params = {};
-    params.get = querystring.parse(url.parse(request.url).query);
-    params.headers = request.headers;
 
-    params.headers.request_url = request.url;
-    params.url = request.url;
-    params.remote_ip   = request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || request.socket.remoteAddress;
-
-    // Cookies
-    params.cookies = cookies.parseCookie(request.headers.cookie);
-
+    // Find route
     var route = (function (request) {
         for (var i=0; i < that.routes.length; i++) {
             if (that.routes[i].match(request)) {
@@ -155,26 +152,20 @@ Router.prototype.route = function (request, response) {
     })(request);
 
     if (!route) {
-        that.notFoundHandler(request, response);
-        return
+        return that.notFoundHandler(request, response);
     }
 
-    var reply = new(Reply)(response, route.handler.stack);
+    var reply = new(Reply)(request, route.handler.stack);
 
-    // XXX: This should be middleware
-    //Post params
-    if (request.method === 'POST') {
-        var form = new(formidable.IncomingForm)();
-        form.keepExtensions = true;
-        form.on('error', function () { console.log('FORM ERROR:'); console.log(arguments) });
-        form.parse(request, function(err, fields, files) {
-            if (err) throw err;
-            params.post = mixin(fields, files);
-            route.handler(reply, params, params);
-        });
-    } else {
-        route.handler.call.apply(this, [reply, params]);
-    }
+    reply.__proto__ = response;
+    response.__proto__ = Reply.prototype;
+
+    var params = new(Params)(request);
+
+    params.__proto__ = request;
+    request.__proto__ = Params.prototype;
+
+    route.handler.call.apply(this, [reply, params]);
 };
 
 var Action = function (/*HandlerA, HandlerB, function () {} */) {

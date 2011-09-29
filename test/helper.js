@@ -55,7 +55,8 @@ require('util').inherits(Response, EventEmitter);
 Response.prototype.writeHead = function (status, headers) {
     this.status = status;
     this.headers = headers;
-}
+};
+
 Response.prototype.write = function (date) {
     this.body += data;
 };
