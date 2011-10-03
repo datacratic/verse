@@ -199,7 +199,7 @@ Router.prototype.route = function (request, response) {
     params.__proto__ = request;
     request.__proto__ = Params.prototype;
 
-    route.handler.call.apply(this, [reply, params]);
+    route.handler.apply(this, [reply, params]);
 };
 
 var Action = function (/*HandlerA, HandlerB, function () {} */) {
@@ -207,8 +207,12 @@ var Action = function (/*HandlerA, HandlerB, function () {} */) {
 
     var target = stack.shift();
     this.stack = stack;
-    this.call = target;
+    this.target = target;
 };
+
+Action.prototype.apply = function (that, args) {
+    return this.target.apply(that, args);
+}
 
 this.Action = Action;
 
