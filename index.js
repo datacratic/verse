@@ -16,6 +16,7 @@ var normalizePath =  function (path) {
     // URL are usually fucked
     // could include '^/' or '$/'
     // could be a string or a regex
+
     path = path.replace(/(^\/|\/$)/g, ''); //remove start and end slashe
     path = path.replace(/\/\/+/g, '/');    //remove double slashes
 
@@ -37,20 +38,61 @@ function mixin () {
 
 // ####################################################
 
-var Reply = function (request, stack) {
-    http.ServerResponse.apply(this, [request]);
-    this.stack = stack;
+var Reply = function (response, stack) {
+    this.stack = stack || [];
     this.headers = {};
+    this.filters = [];
+
+    this.response = response;
 };
 
-Reply.prototype.__proto__ = http.ServerResponse.prototype;
+// Proxy methods
+Reply.prototype.on = function () {
+    this.response.on.apply(this.response, arguments);
+};
+
+Reply.prototype.emit = function () {
+    this.response.emit.apply(this.response, arguments);
+};
+
+Reply.prototype.removeListener = function () {
+    this.response.removeListener.apply(this.response, arguments);
+};
+
+Reply.prototype.end = function () {
+    this.response.end.apply(this.response, arguments);
+};
+
+Reply.prototype.write = function () {
+    this.response.write.apply(this.response, arguments);
+};
+
+Reply.prototype.writeHead = function () {
+    this.response.writeHead.apply(this.response, arguments);
+};
+
+Reply.prototype.getHeader = function () {
+    this.response.getHeader.apply(this.response, arguments);
+};
+
+Reply.prototype.setHeader = function () {
+    this.response.setHeader.apply(this.response, arguments);
+};
 
 Reply.prototype.reply = function (status, body, headers) {
     if (!body || body.length == 0) throw new(Error)('trying to write empty body');
     headers = mixin(this.headers, headers, {'Content-Length': body.length});
 
+    var that = this;
+    this.filters.forEach(function (filter) {
+        filter.apply(this, [body]);
+    });
+
+    this.writeHead(status, headers);
     this.end(body);
 };
+
+// Replace with setHeader
 
 Reply.prototype.addHeaders = function (headers) {
     this.headers = headers;
@@ -94,9 +136,14 @@ Reply.prototype.fail = function (problem) {
     this.reply(500, problem, {});
 };
 
+
 Reply.prototype.serve = function (filePath, headers) {
     var _headers = mixin(this.headers, headers);
     file.serveFile(filePath, 200, _headers, {'method': 'GET', headers: {}}, this);
+};
+
+Reply.prototype.filter = function (func) {
+    this.filters.push(func);
 };
 
 var Params = function (request) {
@@ -155,10 +202,8 @@ Router.prototype.route = function (request, response) {
         return that.notFoundHandler(request, response);
     }
 
-    var reply = new(Reply)(request, route.handler.stack);
-
-    reply.__proto__ = response;
-    response.__proto__ = Reply.prototype;
+    // Generate reply and params object that wrap response and request
+    var reply = new(Reply)(response, route.handler.stack);
 
     var params = new(Params)(request);
 
