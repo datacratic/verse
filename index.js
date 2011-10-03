@@ -166,12 +166,6 @@ var Router = function (baseDir) {
         response.writeHead(404, {'content-type': 'text/plain', 'content-length': body.length});
         response.end(body);
     };
-
-    this.exceptionHandler = function (request, response, exception) {
-        var body = 'Exception: ' + exception.message + '\n' + exception.stack;
-        response.writeHead(500, {'content-type': 'text/plain', 'content-length': body.length});
-        response.end(body);
-    };
 };
 
 Router.prototype.map = function (path) {
