@@ -43,17 +43,29 @@ var Response = this.FakeResponse = function (callback) {
 
     this.callback = callback;
     this.body = '';
+    this.headers = {};
 };
 
 require('util').inherits(Response, EventEmitter);
 
 Response.prototype.writeHead = function (status, headers) {
     this.status = status;
-    this.headers = headers;
+    var that = this;
+    Object.keys(headers).forEach(function (key) {
+        that.headers[key] = headers[key];
+    });
 };
 
 Response.prototype.write = function (date) {
     this.body += data;
+};
+
+Response.prototype.getHeader = function (key) {
+    return this.headers[key];
+};
+
+Response.prototype.setHeader = function (key, value) {
+    this.headers[key] = value;
 };
 
 Response.prototype.end = function (data) {
