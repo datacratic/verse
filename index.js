@@ -174,11 +174,6 @@ Router.prototype.map = function (path) {
     return route;
 };
 
-// XXX get rid of this
-Router.prototype.notFound = function (notFoundHandler) {
-    this.notFoundHandler = notFoundHandler;
-};
-
 Router.prototype.route = function (request, response) {
     var that = this;
 
@@ -193,7 +188,7 @@ Router.prototype.route = function (request, response) {
     })(request);
 
     if (!route) {
-        return that.notFoundHandler(request, response);
+        return this.notFoundHandler(request, response);
     }
 
     // Generate reply and params object that wrap response and request
