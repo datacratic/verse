@@ -38,11 +38,6 @@ var Request = this.FakeRequest = function (url, params, headers) {
     this.method = '';
 };
 
-Request.prototype._parseCookies = function () {
-    // pass, remove later
-};
-
-
 var Response = this.FakeResponse = function (callback) {
     EventEmitter.apply(this);
 
