@@ -79,3 +79,35 @@ this.test = function (router, request, callback) {
 
     router.route(request, response);
 };
+
+var TestAction = this.TestAction = function (action) {
+    this.router = new v.Router;
+
+    // Defaults
+    this.url = 'testUrl';
+    this.headers = {};
+    this.body = '';
+    this.action = new(v.Action)(action);
+
+    this.router.map(new(RegExp)(this.url)).bind(action);
+
+};
+
+TestAction.prototype.with = function (params) {
+
+    // Overrides
+    Object.keys(params).forEach(function (key) {
+        this[key] = params[key];
+    });
+
+    return this;
+};
+
+var h = this;
+var v = require('./../index');
+
+TestAction.prototype.should = function (context) {
+    var request  = new(h.FakeRequest)(this.url, this.body, this.headers);
+
+    h.test(this.router, request, context);
+};

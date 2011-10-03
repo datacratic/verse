@@ -4,7 +4,8 @@ var v = require('./../index'),
 
 var router = new(v.Router)();
 
-// Test Request Response #######################
+
+//Test Request Response #######################
 
 var testAction = new(v.Action)(function (reply, params) {
     reply.send('Hello World');
@@ -39,7 +40,6 @@ h.test(router, index, function (response) {
 var composedAction = new(v.Action)(function (reply, params) {
     reply.pass(reply, {'foo': 'bar'});
 }, function (reply, params) {
-    reply.writeHead(200);
     reply.send(JSON.stringify(params));
 });
 
@@ -147,6 +147,7 @@ h.test(router, pixel, function (response) {
 });
 
 // Exceptions  ###############################
+
 var m = require('./../lib/middleware');
 
 var problem = function (reply, params) {
@@ -175,4 +176,13 @@ a.doesNotThrow(function () {
         a.equal(response.status, 500);
         a.ok(/Catastrophic Error/.test(response.body));
     });
+});
+
+// Abbreviation ##############################
+
+new h.TestAction(function (reply, params) {
+    reply.send('hello world');
+}).should(function (response) {
+    a.equal(response.status, 200);
+    a.equal(response.body, 'hello world');
 });
