@@ -136,10 +136,9 @@ Reply.prototype.fail = function (problem) {
     this.reply(500, problem, {});
 };
 
-
 Reply.prototype.serve = function (filePath, headers) {
     var _headers = mixin(this.headers, headers);
-    file.serveFile(filePath, 200, _headers, {'method': 'GET', headers: {}}, this);
+    file.serveFile(filePath, 200, _headers, {'method': 'GET', headers: {}}, this.response);
 };
 
 Reply.prototype.filter = function (func) {
@@ -150,7 +149,13 @@ var Params = function (request) {
     http.ClientRequest.apply(this, [{}]);
     this.get = querystring.parse(url.parse(request.url).query);
 
-    this.cookies = cookies.parseCookie(request.headers.cookie);
+    if (request.headers.cookie) {
+        this.cookies = cookies.parseCookie(request.headers.cookie);
+    } else {
+        this.cookies = {};
+    }
+
+    this.remote_ip = request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || request.socket.remoteAddress;
 };
 
 Params.prototype.__proto__ = http.ClientRequest.prototype;
