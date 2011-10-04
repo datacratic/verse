@@ -207,7 +207,7 @@ Router.prototype.route = function (request, response) {
     route.handler.apply(this, [reply, params]);
 };
 
-var Action = function (/*HandlerA, HandlerB, function () {} */) {
+var Action = this.Action = function (/*HandlerA, HandlerB, function () {} */) {
     var stack = Array.prototype.concat.apply([], arguments);
 
     var target = stack.shift();
@@ -217,9 +217,17 @@ var Action = function (/*HandlerA, HandlerB, function () {} */) {
 
 Action.prototype.apply = function (that, args) {
     return this.target.apply(that, args);
-}
+};
 
-this.Action = Action;
+var ActionClass = this.ActionClass = function () {
+    var klassStack = Array.prototype.concat.apply([], arguments);
+
+    return function () {
+        var stack = Array.prototype.concat.apply(klassStack, arguments);
+        return new(Action)(stack);
+    }
+};
+
 
 var Route = function (path) {
     this.path = path;
