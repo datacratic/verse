@@ -39,7 +39,7 @@ function mixin () {
 // ####################################################
 
 var Reply = function (response, stack) {
-    this.stack = stack || [];
+    this.stack = Array.prototype.concat.apply([], stack);
     this.headers = {};
     this.filters = [];
 
@@ -227,7 +227,6 @@ var ActionClass = this.ActionClass = function () {
         return new(Action)(stack);
     }
 };
-
 
 var Route = function (path) {
     this.path = path;
