@@ -6,15 +6,4 @@ Http router
 + formidable
 + cookies
 
-Todo
-----
-+ route to functions
-+ functions can return json
-+ functions can parse json
-+ functions can stream
-+ function can POST GET ETC
-+ fallback to a generic error handler
-+ reply.send, reply.fail, reply(Buffer, 'binary')
-    + all that good stuff
-    + reply.render(someTemplate)
-    + map.serving('/some file :D');
+Composing web endpoints
